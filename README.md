@@ -1,2 +1,2 @@
 # Releases
-Binary releases of ManiVault studi
+Binary releases of ManiVault studio
