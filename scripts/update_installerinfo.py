@@ -33,7 +33,7 @@ HDR = {
     **({"Authorization": f"Bearer {_tok}"} if _tok else {}),
 }
 
-
+# Fetch release JSON from GitHub (latest or specific tag)
 def get_release(tag: str | None) -> dict:
     base = f"https://api.github.com/repos/{ORG}/{REPO}/releases"
     url = f"{base}/tags/{tag}" if tag else f"{base}/latest"
@@ -42,7 +42,7 @@ def get_release(tag: str | None) -> dict:
     return r.json()
 
 
-# -------- version + os slug (for filename) from Release Tag --------
+# Extract version (for filename) from Release Tag
 def version_from_tag(tag: str) -> str:
     # accept 1.3 or 1.3.0; normalize to x.y.z
     m = re.search(r"(\d+\.\d+(?:\.\d+)?)", tag)
@@ -51,7 +51,7 @@ def version_from_tag(tag: str) -> str:
     v = m.group(1)
     return v if v.count(".") == 2 else v + ".0"
 
-
+# Extract os_slug (for filename) from Release Tag (ubuntu_24 / windows / macos / linux)
 def os_slug_from_tag(tag: str) -> str:
     t = tag.lower()
     if re.search(r"ubuntu[-_\s]?24", t):
@@ -65,9 +65,8 @@ def os_slug_from_tag(tag: str) -> str:
     if "linux" in t:
         return "linux"
     return "windows"
-# -------------------------------------------------------------
 
-
+# Infer OS for front-matter using both tag + asset file name, default to windows
 def infer_os_for_frontmatter(tag: str, asset_name: str) -> str:
     hay = f"{tag.lower()} {asset_name.lower()}"
     if "windows" in hay or asset_name.lower().endswith((".exe", ".msi")):
@@ -80,25 +79,26 @@ def infer_os_for_frontmatter(tag: str, asset_name: str) -> str:
         return "linux"
     return "windows"
 
-
+# Return Jekyll front-matter metadata tuple for OS
+# TO-DO: review table values
 def os_meta(os_key: str):
     table = {
         "windows": ("Windows", "Windows", "Windows 10, 11", "windows", 1, "windows"),
-        "mac": ("macOS", "macOS", "macOS 12+ (Apple & Intel)", "mac", 2, "apple"),
-        "linux": ("Linux", "Linux", "Ubuntu 22.04+", "linux", 3, "linux"),
+        "linux":   ("Linux", "Linux", "Ubuntu 22.04+", "linux", 2, "linux"),
+        "mac":     ("macOS", "macOS", "macOS 12+ (Apple & Intel)", "mac", 3, "apple"),
     }
     return table[os_key]
 
-
+# Convert GitHub ISO timestamp → "YYYY-MM-DD HH:MM:SS"
 def fmt_date(iso: str) -> str:
     dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(timezone.utc)
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-
+# Convert bytes → "### MB"
 def size_mb(nbytes: int) -> str:
     return f"{round((nbytes or 0) / 1024 / 1024)} MB"
 
-
+# Render the final markdown with Jekyll front-matter
 def render_md(
     name, short, compat, key, order, icon, version, date_str, size_str, url
 ) -> str:
@@ -123,7 +123,7 @@ download-link: {url}
 {version} release of ManiVault Studio.
 """
 
-
+# Main execution: fetch release → extract fields → write markdown file
 def main() -> None:
     rel = get_release(os.getenv("RELEASE_TAG"))
     assets = rel.get("assets") or []
@@ -138,10 +138,11 @@ def main() -> None:
     version_for_filename = version_from_tag(tag)
     os_slug = os_slug_from_tag(tag)
 
-    # front-matter OS (robust via tag+asset)
+    # front-matter values from inferred OS according to tag + asset name
     os_key = infer_os_for_frontmatter(tag, aname)
     name, short, compat, key, order, icon = os_meta(os_key)
 
+#   Release metadata
     date_str = fmt_date(rel.get("published_at") or rel.get("created_at"))
     size_str = size_mb(a0.get("size", 0))
     url = a0.get("browser_download_url")
