@@ -48,6 +48,14 @@ jobs:
             Releases
             manivaultstudio.github.io
 
+      - name: Can App token see website repo?
+        env:
+            APP_TOKEN: ${{ steps.app_token.outputs.token }}
+        run: |
+            curl -i -H "Authorization: Bearer ${APP_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/ManiVaultStudio/manivaultstudio.github.io
+
       - name: Clone manivaultstudio.github.io (feature branch for testing)
         env:
           APP_TOKEN: ${{ steps.app_token.outputs.token }}
